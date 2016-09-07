@@ -3,12 +3,17 @@
 #include <string.h>
 #include <math.h>
 #include "malloc.h"
-#include <time.h>
 
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include <GL/glut.h>
 
+
+#define ITERATIONS 500 
+#define SLOWMOT 1
+
+#define RESX  800
+#define RESY  748 
 
 typedef struct {
   double r;
@@ -24,17 +29,16 @@ typedef struct {
 }point;
 
 
-static int resx = 800;
-static int resy = 748;
+
 
 static int currentLineTrace[2] = {75,413};
 static int nextLineTrace[2] = {0,0};
 
 static int points[2][2] = {{0,1},{1,0}}; 
 
-static point *pointsArray;
 static int sizePointArray = 0;
 
+static int slowMotionEnabled = 1;
 
 void plot (int x, int y){
     COLOR color;
@@ -42,8 +46,14 @@ void plot (int x, int y){
     glBegin (GL_POINTS);
     glVertex2i (x,y);
     glEnd();
+    if (SLOWMOT==1){
+        glFlush();
+    }
     //glFlush();
 }
+
+
+
 
 void addToPointsArray(point *array, int x, int y){
 
@@ -63,7 +73,7 @@ void deletePointsArray (point *array){
     sizePointArray=0;
 }
 
-//Trazo de la línea entre dos puntos.
+
 void bresenham (int x0, int y0, int x1, int y1, void (*plot)(int,int)){
     int d2x,d2y,dx,dy,d,
         Delta_N,Delta_NE,Delta_E,Delta_SE,
@@ -235,45 +245,47 @@ void bresenham (int x0, int y0, int x1, int y1, void (*plot)(int,int)){
     }
 }
 
-//Actualiza el arreglo global dinámico que almacenará las coordenadas universales actuales. AL leerlas del archivo establece todo con el mapa completo. 
+
+//Obtiene el siguiente punto en el trazo de la curva
 void nextCurvePoint (point *array, double t) {
     
-    int x0p, y0p, x1p, y1p, x2p, y2p, x3p, y3p;
-    double exp3, exp2, exp1, exp0;
+    int x0point, y0point, x1point, y1point;
+    int x2point, y2point, x3point, y3point;
 
-    exp0 = pow((1-t),3);
-    exp1 = 3*pow((1-t),2)*t;
-    exp2 = 3*(1-t)*pow(t,2);
-    exp3 = pow(t,3);
+    double derivada3, derivada2, derivada1, derivada0;
+
+    derivada0 = pow((1-t),3);
+    derivada1 = 3*pow((1-t),2)*t;
+    derivada2 = 3*(1-t)*pow(t,2);
+    derivada3 = pow(t,3);
 
 
-    x0p = exp0 * array[0].x;
-    y0p = exp0 * array[0].y;
+    x0point = derivada0 * array[0].x;
+    y0point = derivada0 * array[0].y;
 
-    x1p = exp1 * array[1].x; 
-    y1p = exp1 * array[1].y;
+    x1point = derivada1 * array[1].x; 
+    y1point = derivada1 * array[1].y;
 
-    x2p = exp2 * array[2].x; 
-    y2p = exp2 * array[2].y;
+    x2point = derivada2 * array[2].x; 
+    y2point = derivada2 * array[2].y;
 
-    x3p = exp3 * array[3].x;
-    y3p = exp3 * array[3].y;
+    x3point = derivada3 * array[3].x;
+    y3point = derivada3 * array[3].y;
 
-    nextLineTrace[0] = x0p + x1p + x2p + x3p;   
-    nextLineTrace[1] = y0p + y1p + y2p + y3p;
+    nextLineTrace[0] = x0point + x1point + x2point + x3point;   
+    nextLineTrace[1] = y0point + y1point + y2point + y3point;
 
-    //printf("(%i,%i)\n", nextLineTrace[0], nextLineTrace[1]);
     bresenham(currentLineTrace[0],currentLineTrace[1],nextLineTrace[0],nextLineTrace[1],plot);
     
     currentLineTrace[0] = nextLineTrace[0];
     currentLineTrace[1] = nextLineTrace[1];
 }
 
-void bezier (point *array, int precision) {
+void curvaBezier (point *array) {
     int i;
     double t;
-    for (i=0;i<=precision;i++){
-        t = ((double)i)/precision;
+    for (i=0;i<=ITERATIONS;i++){
+        t = ((double)i)/ITERATIONS;
         nextCurvePoint(array,t);
     }
 }
@@ -297,16 +309,15 @@ void display (void){
 }
 
 int main(int argc, char *argv[]){
-    buffer = (COLOR **)malloc(resx * sizeof(COLOR*));
+    buffer = (COLOR **)malloc(RESX * sizeof(COLOR*));
     
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
-    glutInitWindowSize(resx,resy);
+    glutInitWindowSize(RESX,RESY);
     glutCreateWindow("Firma de Michael Jackson");
     glClearColor(1.0,1.0,1.0,1.0);
     glClear(GL_COLOR_BUFFER_BIT);
-    gluOrtho2D(-0.5, resx +0.5, -0.5, resx + 0.5);
-
+    gluOrtho2D(-0.5, RESX +0.5, -0.5, RESX + 0.5);
 
     point a[4];
 
@@ -317,7 +328,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 183, 550);
     addToPointsArray(a, 132, 435);
     glColor3f(0,0,0);
-    bezier(a,3000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Comienza primera mitad del segundo arco de la m
@@ -327,7 +338,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 317, 748);
     addToPointsArray(a, 235, 588);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Comienza segunda mitad del segundo arco de la m
@@ -337,7 +348,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 146, 371);
     addToPointsArray(a, 145, 259);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //COmienza la i
@@ -349,7 +360,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 219, 409);
     addToPointsArray(a, 247, 468);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Termina la i y comienza la c
@@ -359,7 +370,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 270, 426);
     addToPointsArray(a, 270, 449);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Sigue la c
@@ -369,7 +380,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 348, 478);
     addToPointsArray(a, 315, 452);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Sigue la c
@@ -379,7 +390,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 294, 482);
     addToPointsArray(a, 270, 449);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Termina la c y comienza la h
@@ -389,7 +400,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 323, 419);
     addToPointsArray(a, 332, 438);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Sigue la h
@@ -399,7 +410,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 418, 611);
     addToPointsArray(a, 324, 372);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Sigue la H 
@@ -409,7 +420,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 403, 473);
     addToPointsArray(a, 415, 471);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Termina la h y comienza la a
@@ -419,7 +430,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 443, 414);
     addToPointsArray(a, 466, 462);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Termina la a y comienza la e
@@ -429,7 +440,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 475, 402);
     addToPointsArray(a, 489, 434);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Termina la e y comienza la l
@@ -439,7 +450,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 570, 424);
     addToPointsArray(a, 602, 547);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Termina la l
@@ -449,7 +460,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 585, 405);
     addToPointsArray(a, 640, 431);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Prosigue la l alargada
@@ -459,7 +470,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 596, 790);
     addToPointsArray(a, 350, 685);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Prosigue la l alargada
@@ -469,7 +480,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 55, 335);
     addToPointsArray(a, 257, 304);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //FInaliza Michael
@@ -484,7 +495,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 397, 526);
     addToPointsArray(a, 340, 242);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Prosigue la J
@@ -496,7 +507,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 210, 3);
     addToPointsArray(a, 200, 38);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Gancho de la J terminada
@@ -507,7 +518,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 131, 306);
     addToPointsArray(a, 247, 280);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //COmienza la a
@@ -519,7 +530,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 364, 285);
     addToPointsArray(a, 366, 271);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Termina la a
@@ -529,7 +540,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 400, 275);
     addToPointsArray(a, 403, 284);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Comienza la c
@@ -539,7 +550,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 438, 282);
     addToPointsArray(a, 446, 290);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Prosig la c
@@ -549,7 +560,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 456, 286);
     addToPointsArray(a, 451, 290);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Termina la c y comienza la k
@@ -559,7 +570,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 518, 275);
     addToPointsArray(a, 510, 320);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Prosigue k
@@ -569,7 +580,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 498, 293);
     addToPointsArray(a, 485, 260);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Prosigue k
@@ -579,7 +590,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 508, 312);
     addToPointsArray(a, 507, 335);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Termina k Y COMIENZA S
@@ -589,7 +600,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 538, 273);
     addToPointsArray(a, 546, 297);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Termina k Y COMIENZA S
@@ -599,7 +610,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 634, 296);
     addToPointsArray(a, 559, 289);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //cOMIENZA LA O
@@ -609,7 +620,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 610, 289);
     addToPointsArray(a, 608, 287);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Comienza la n
@@ -619,7 +630,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 611, 272);
     addToPointsArray(a, 602, 267);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Prosigue la n
@@ -629,7 +640,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 711, 383);
     addToPointsArray(a, 682, 354);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     //Prosigue la n
@@ -639,7 +650,7 @@ int main(int argc, char *argv[]){
     addToPointsArray(a, 498, 130);
     addToPointsArray(a, 715, 128);
     glColor3f(0,0,0);
-    bezier(a,4000);
+    curvaBezier(a);
     deletePointsArray(a);
 
     glFlush();
