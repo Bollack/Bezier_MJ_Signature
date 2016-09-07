@@ -27,8 +27,8 @@ typedef struct {
 static int resx = 800;
 static int resy = 748;
 
-static int currPoint[2] = {75,413};
-static int nextPoint[2] = {0,0};
+static int currentLineTrace[2] = {75,413};
+static int nextLineTrace[2] = {0,0};
 
 static int points[2][2] = {{0,1},{1,0}}; 
 
@@ -236,7 +236,7 @@ void bresenham (int x0, int y0, int x1, int y1, void (*plot)(int,int)){
 }
 
 //Actualiza el arreglo global dinámico que almacenará las coordenadas universales actuales. AL leerlas del archivo establece todo con el mapa completo. 
-void paramEc (point *array, double t) {
+void nextCurvePoint (point *array, double t) {
     
     int x0p, y0p, x1p, y1p, x2p, y2p, x3p, y3p;
     double exp3, exp2, exp1, exp0;
@@ -246,19 +246,27 @@ void paramEc (point *array, double t) {
     exp2 = 3*(1-t)*pow(t,2);
     exp3 = pow(t,3);
 
-    x0p = exp0 * array[0].x; y0p = exp0 * array[0].y;    
-    x1p = exp1 * array[1].x; y1p = exp1 * array[1].y;
-    x2p = exp2 * array[2].x; y2p = exp2 * array[2].y;
-    x3p = exp3 * array[3].x; y3p = exp3 * array[3].y;
 
-    nextPoint[0] = x0p + x1p + x2p + x3p;   
-    nextPoint[1] = y0p + y1p + y2p + y3p;
+    x0p = exp0 * array[0].x;
+    y0p = exp0 * array[0].y;
 
-    //printf("(%i,%i)\n", nextPoint[0], nextPoint[1]);
-    bresenham(currPoint[0],currPoint[1],nextPoint[0],nextPoint[1],plot);
+    x1p = exp1 * array[1].x; 
+    y1p = exp1 * array[1].y;
+
+    x2p = exp2 * array[2].x; 
+    y2p = exp2 * array[2].y;
+
+    x3p = exp3 * array[3].x;
+    y3p = exp3 * array[3].y;
+
+    nextLineTrace[0] = x0p + x1p + x2p + x3p;   
+    nextLineTrace[1] = y0p + y1p + y2p + y3p;
+
+    //printf("(%i,%i)\n", nextLineTrace[0], nextLineTrace[1]);
+    bresenham(currentLineTrace[0],currentLineTrace[1],nextLineTrace[0],nextLineTrace[1],plot);
     
-    currPoint[0] = nextPoint[0];
-    currPoint[1] = nextPoint[1];
+    currentLineTrace[0] = nextLineTrace[0];
+    currentLineTrace[1] = nextLineTrace[1];
 }
 
 void bezier (point *array, int precision) {
@@ -266,7 +274,7 @@ void bezier (point *array, int precision) {
     double t;
     for (i=0;i<=precision;i++){
         t = ((double)i)/precision;
-        paramEc(array,t);
+        nextCurvePoint(array,t);
     }
 }
 
@@ -333,8 +341,8 @@ int main(int argc, char *argv[]){
     deletePointsArray(a);
 
     //COmienza la i
-    currPoint[0]=145;
-    currPoint[1]=461;
+    currentLineTrace[0]=145;
+    currentLineTrace[1]=461;
     glColor3f(1,0,0);
     addToPointsArray(a, 145, 461);
     addToPointsArray(a, 153, 405);
@@ -468,8 +476,8 @@ int main(int argc, char *argv[]){
     //Comienza JAckson
 
     //Comienza la J
-    currPoint[0]=330;
-    currPoint[1]=292;
+    currentLineTrace[0]=330;
+    currentLineTrace[1]=292;
     glColor3f(1,0,0);
     addToPointsArray(a, 330, 292);
     addToPointsArray(a, 287, 337);
@@ -481,8 +489,8 @@ int main(int argc, char *argv[]){
 
     //Prosigue la J
     glColor3f(1,0,0);
-    currPoint[0]=340;
-    currPoint[1]=243;
+    currentLineTrace[0]=340;
+    currentLineTrace[1]=243;
     addToPointsArray(a, 340, 243);
     addToPointsArray(a, 273, 0);
     addToPointsArray(a, 210, 3);
@@ -504,8 +512,8 @@ int main(int argc, char *argv[]){
 
     //COmienza la a
     glColor3f(1,0,0);
-    currPoint[0]= 416;
-    currPoint[1]= 295;
+    currentLineTrace[0]= 416;
+    currentLineTrace[1]= 295;
     addToPointsArray(a, 416, 295);
     addToPointsArray(a, 381, 304);
     addToPointsArray(a, 364, 285);
